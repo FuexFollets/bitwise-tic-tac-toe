@@ -75,6 +75,7 @@ namespace tictactoe {
         }
 
         std::ostream& operator<<(std::ostream&, const bitboard&);
+        void fancy_print();
     };
 }
 
