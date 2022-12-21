@@ -4,6 +4,8 @@
 #include <cstdint>
 #include <exception>
 #include <array>
+#include <string>
+#include <cstring>
 
 namespace tictactoe {
     struct bitboard {
@@ -11,7 +13,7 @@ namespace tictactoe {
             x = 'X', y = 'Y', none = static_cast<char>(0)
         };
 
-        const static std::array<std::uint16_t, 8> bitwise_win_checks {
+        static constexpr const std::array<std::uint64_t, 8> bitwise_win_checks {
             0x111'000'000,
             0x000'111'000,
             0x000'000'111,
@@ -22,30 +24,43 @@ namespace tictactoe {
             0x001'010'100
         };
 
-        struct not_valid_move : std::exception {};
+        struct not_valid_move : std::exception {
+            using std::exception::what;
 
-        /* 8 7 6
+            const char* what() {
+                std::string std_exception_string {};
+
+                char* exception_string {new char[std_exception_string.size()]};
+
+                return std::strcpy(exception_string, std_exception_string.c_str());
+            }
+        };
+
+        /* Bit positoins as representations on tic-tac-tow board
+         * 8 7 6
          * 5 4 3
          * 2 1 0
          */
 
-        std::uint16_t player_x {};
-        std::uint16_t player_y {};
+        std::uint64_t player_x {};
+        std::uint64_t player_y {};
 
         char turn {turn_values::x};
 
-        bool is_valid_move(int move_square) {
-            const std::uint_16 bit_position {1 << move_square};
+        [[nodiscard]] bool is_valid_move(std::uint64_t move_square) const {
+            const std::uint64_t bit_position {std::uint64_t {1} << move_square};
 
             return 
-                (player_x & bit_position == 0) &&
-                (player_y & bit_position == 0);
+                ((player_x & bit_position) == 0) &&
+                ((player_y & bit_position) == 0);
         }
 
-        bool make_move(int move_square) {
-            if (!is_valid_move(move_square)) throw not_valid_move;
+        bitboard& make_move(int move_square) {
+            if (!is_valid_move(move_square)) {
+                throw not_valid_move {};
+            }
 
-            const std::uint16_t bit_position {1 << move_square};
+            const std::uint64_t bit_position {std::uint64_t{1} << move_square};
 
             switch (turn) {
                 case turn_values::x:
@@ -55,13 +70,15 @@ namespace tictactoe {
                     player_y |= bit_position;
                     break;
             }
+
+            return *this;
         }
 
         char winner() {
             int player_number {}; // 0 = X, 1 = O;
             for (const auto player : {player_x, player_y}) {
                 for (const auto check_mask : bitwise_win_checks) {
-                    if (player & check_mask == player) {
+                    if ((player & check_mask) == player) {
                         return (player_number == 0) ?
                             (turn_values::x) :
                             (turn_values::y);
@@ -74,7 +91,7 @@ namespace tictactoe {
             return turn_values::none;
         }
 
-        std::ostream& operator<<(std::ostream&, const bitboard&);
+        friend std::ostream& operator<<(std::ostream&, const bitboard&);
         void fancy_print();
     };
 }
